@@ -1,49 +1,40 @@
 repeat wait() until game:IsLoaded()
 
--- 🔧 Cấu hình (Không cần chỉnh lại trên GitHub)
 getgenv().Config = {
-    ["Select Join"] = "Pirates", -- "Marines" hoặc "Pirates"
+    ["Select Join"] = "Pirates", -- Chọn team
     ["Auto chests will stop if you've"] = {},
     ["Fist of Darkness"] = true,
     ["God's Chalice"] = true,
-    ["Auto Rejoin"] = false, -- Chỉ hoạt động với premium
-    ["Boost Fps"] = 1, -- Giảm lag, tối đa 10
-    ["AutoMode"] = "Tween" -- Hoặc "tp"
+    ["Auto Rejoin"] = false, -- Premium only
+    ["Boost Fps"] = 1, -- Giảm lag (tối đa 10)
+    ["AutoMode"] = "Tween" -- Có thể đổi thành "tp" nếu muốn dịch chuyển ngay lập tức
 }
 
--- 🔄 Chọn Team (Marines hoặc Pirates)
-local team = getgenv().Config["Select Join"]
-if team == "Marines" and (not game.Players.LocalPlayer.Team or game.Players.LocalPlayer.Team.Name ~= "Marines") then
-    game.ReplicatedStorage.Remotes.CommF_:InvokeServer("SetTeam", "Marines")
-    wait(2)
-elseif team == "Pirates" and (not game.Players.LocalPlayer.Team or game.Players.LocalPlayer.Team.Name ~= "Pirates") then
-    game.ReplicatedStorage.Remotes.CommF_:InvokeServer("SetTeam", "Pirates")
-    wait(2)
-end
+local TweenService = game:GetService("TweenService")
+local CollectionService = game:GetService("CollectionService")
+local TeleportService = game:GetService("TeleportService")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
 
--- 🕗 Lag 20 giây trước khi bắt đầu
-local function ExtremeLag()
-    local lagTime = tick() + 20
-    while tick() < lagTime do end
-end
-ExtremeLag()
+local chestCount = 0
+local autoRunning = true
 
--- 🌟 UI Setup (Không nền đen, giao diện đẹp)
+-- 🖥 **Giao diện UI**
 local ScreenGui = Instance.new("ScreenGui")
 local MainFrame = Instance.new("Frame")
 local Title = Instance.new("TextLabel")
 local TimerLabel = Instance.new("TextLabel")
 local StatusLabel = Instance.new("TextLabel")
-local ChestCountLabel = Instance.new("TextLabel")  -- Hiển thị số rương đã nhặt
+local ChestCountLabel = Instance.new("TextLabel")
 
 ScreenGui.Parent = game:GetService("CoreGui")
 MainFrame.Parent = ScreenGui
-MainFrame.BackgroundTransparency = 1  -- Ẩn nền
+MainFrame.BackgroundTransparency = 1 -- Ẩn nền
 MainFrame.Size = UDim2.new(0, 400, 0, 150)
 MainFrame.Position = UDim2.new(0.5, -200, 0.05, 0)
 
 Title.Parent = MainFrame
-Title.Text = "Shinichi Hub ( Auto Chest )"
+Title.Text = "Shinichi Hub (Auto Chest)"
 Title.Size = UDim2.new(1, 0, 0.2, 0)
 Title.BackgroundTransparency = 1
 Title.TextColor3 = Color3.fromRGB(255, 204, 0)
@@ -77,47 +68,39 @@ ChestCountLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 ChestCountLabel.Font = Enum.Font.GothamBold
 ChestCountLabel.TextSize = 22
 
--- 🎯 Auto Chest (Tween tốc độ hợp lý)
-local TweenService = game:GetService("TweenService")
-local autoMode = getgenv().Config["AutoMode"]
-
-local function TweenToPosition(position, distance)
-    local player = game.Players.LocalPlayer
+-- 📍 **Hàm Tween di chuyển đến chest**
+local function TweenToPosition(position)
     local char = player.Character
     if not char then return end
-    
-    local humanoidRootPart = char:FindFirstChild("HumanoidRootPart")
-    if humanoidRootPart then
-        local speed = (distance > 50) and (distance / 200) * 0.5 or (distance / 100) * 1.3
-        local tweenInfo = TweenInfo.new(speed, Enum.EasingStyle.Linear)
-        local tween = TweenService:Create(humanoidRootPart, tweenInfo, {CFrame = CFrame.new(position)})
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if root then
+        local tweenInfo = TweenInfo.new(1, Enum.EasingStyle.Linear) -- Giữ tốc độ giống nhau dù xa hay gần
+        local tween = TweenService:Create(root, tweenInfo, {CFrame = CFrame.new(position)})
         tween:Play()
+        wait(1.2) -- Đợi di chuyển hoàn tất
     end
 end
 
+-- 📍 **Hàm Teleport ngay lập tức**
 local function TeleportToPosition(position)
-    local player = game.Players.LocalPlayer
     local char = player.Character
     if not char then return end
-    
-    local humanoidRootPart = char:FindFirstChild("HumanoidRootPart")
-    if humanoidRootPart then
-        humanoidRootPart.CFrame = CFrame.new(position)
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if root then
+        root.CFrame = CFrame.new(position)
     end
 end
 
-_G.AutoChest = true
-local chestCount = 0  -- Đếm số rương đã nhặt
-
+-- 🔄 **Auto Nhặt Chest**
 spawn(function()
-    while _G.AutoChest do
+    while autoRunning do
         wait(0.5)
-        local player = game.Players.LocalPlayer
         local char = player.Character or player.CharacterAdded:Wait()
         local pos = char:GetPivot().Position
-        local chests = game:GetService("CollectionService"):GetTagged("_ChestTagged")
+        local chests = CollectionService:GetTagged("_ChestTagged")
         local closestDist, closestChest = math.huge
 
+        -- 🔍 **Quét tất cả chest**
         for _, chest in pairs(chests) do
             if not chest:GetAttribute("IsDisabled") then
                 local dist = (chest:GetPivot().Position - pos).Magnitude
@@ -127,40 +110,32 @@ spawn(function()
             end
         end
 
+        -- 🏃 **Di chuyển đến chest**
         if closestChest then
             StatusLabel.Text = "Status: Moving to Chest..."
             local chestPos = closestChest:GetPivot().Position
-            if autoMode == "Tween" then
-                TweenToPosition(chestPos, closestDist)
-            elseif autoMode == "tp" then
+            if Config.AutoMode == "Tween" then
+                TweenToPosition(chestPos)
+            else
                 TeleportToPosition(chestPos)
+                wait(0.5)
             end
-            wait(math.clamp(closestDist / 100 + 1, 1, 3))
+
             StatusLabel.Text = "Status: Collecting Chest..."
             chestCount = chestCount + 1
             ChestCountLabel.Text = "Chests Collected: " .. chestCount
-        end
-    end
-end)
-
--- 🔄 Hop Server (Nếu nhặt đủ 50 rương hoặc không còn rương)
-spawn(function()
-    while _G.AutoChest do
-        wait(5)
-        local chests = #game:GetService("CollectionService"):GetTagged("_ChestTagged")
-
-        if chestCount >= 50 or chests == 0 then
-            StatusLabel.Text = "Status: Hopping Server..."
+        else
+            StatusLabel.Text = "Status: No Chests Found. Hopping Server..."
             wait(2)
-            game:GetService("TeleportService"):Teleport(game.PlaceId)
+            TeleportService:Teleport(game.PlaceId) -- Đổi server
         end
     end
 end)
 
--- ⏳ Timer (Hiển thị thời gian)
+-- ⏳ **Bộ đếm thời gian**
 spawn(function()
     local seconds = 0
-    while _G.AutoChest do
+    while autoRunning do
         wait(1)
         seconds = seconds + 1
         local minutes = math.floor(seconds / 60)
@@ -169,11 +144,10 @@ spawn(function()
     end
 end)
 
--- 🎮 Tùy chỉnh FPS Boost
+-- 🚀 **Tăng FPS**
 local function SetGraphicsQuality(level)
     local PlayerSettings = game:GetService("Players").LocalPlayer.PlayerSettings
     PlayerSettings.SavingEnabled = true
     PlayerSettings.GraphicsQuality = level
 end
-
-SetGraphicsQuality(getgenv().Config["Boost Fps"])
+SetGraphicsQuality(2) -- Giảm mức đồ họa xuống để tối ưu FPS
