@@ -7,9 +7,13 @@ local TeleportService = game:GetService("TeleportService")
 -- 🌟 Config mặc định
 _G.AutoCollectChest = _G.AutoCollectChest or true
 _G.EspChest = _G.EspChest or true
+_G.HopServerAfterChest = _G.HopServerAfterChest or 10 -- Số chest cần nhặt trước khi hop
 _G.StopGodChalice = _G.StopGodChalice or true
 _G.StopFistOfDarkness = _G.StopFistOfDarkness or true
 _G.SelectTeam = _G.SelectTeam or "Pirate" -- "Marines" hoặc "Pirate"
+
+-- 🌟 Biến đếm số chest đã nhặt
+local ChestCollected = 0
 
 -- 🌟 Auto chọn Team
 if _G.SelectTeam then
@@ -44,7 +48,7 @@ if _G.EspChest then
     end)
 end
 
--- 🌟 Auto Collect Chest (FIX hop server ngay lập tức)
+-- 🌟 Auto Collect Chest với giới hạn hop server
 if _G.AutoCollectChest then
     spawn(function()
         wait(3) -- Chờ game load chest tránh lỗi hop sớm
@@ -70,6 +74,7 @@ if _G.AutoCollectChest then
                 if ClosestChest then
                     LocalPlayer.Character.HumanoidRootPart.CFrame = ClosestChest:GetPivot()
                     wait(1)
+                    ChestCollected = ChestCollected + 1
                 end
             else
                 -- Kiểm tra item quan trọng trước khi đổi server
@@ -82,8 +87,8 @@ if _G.AutoCollectChest then
                     end
                 end
 
-                -- Chỉ đổi server nếu không còn chest và không có item quan trọng
-                if not hasImportantItem then
+                -- Chỉ hop server nếu đã nhặt đủ số chest yêu cầu và không có item quan trọng
+                if ChestCollected >= _G.HopServerAfterChest and not hasImportantItem then
                     wait(5) -- Chờ thêm tránh spam hop quá nhanh
                     TeleportService:Teleport(game.PlaceId, LocalPlayer)
                 end
@@ -92,7 +97,7 @@ if _G.AutoCollectChest then
     end)
 end
 
--- 🌟 UI Menu (Không cần Library)
+-- 🌟 UI Menu
 local ScreenGui = Instance.new("ScreenGui")
 local MainFrame = Instance.new("Frame")
 local Title = Instance.new("TextLabel")
@@ -156,4 +161,11 @@ end)
 
 CloseUI.MouseButton1Click:Connect(function()
     ScreenGui:Destroy()
+end)
+
+-- 🌟 Cập nhật số chest đã nhặt
+spawn(function()
+    while wait(1) do
+        ChestCount.Text = "Chest Collected: " .. ChestCollected
+    end
 end)
