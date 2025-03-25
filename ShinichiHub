@@ -1,144 +1,144 @@
--- Config
-_G.ESPChest = true -- Bật/tắt ESP Chest
-_G.StopGodChalice = true -- Dừng khi nhặt được God Chalice hoặc Fist of Darkness
-_G.JoinTeam = "Pirates" -- Chọn team: "Marines" hoặc "Pirates"
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Workspace = game:GetService("Workspace")
+local HttpService = game:GetService("HttpService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- Thông báo khi script load thành công
-game.StarterGui:SetCore("SendNotification", {
-    Title = "Shinichi Hub";
-    Text = "Load Success!";
-    Duration = 5;
-})
+-- 🌟 Auto chọn Team
+if _G.SelectTeam then
+    local Team = _G.SelectTeam == "Pirate" and "Pirates" or "Marines"
+    ReplicatedStorage.Remotes.CommF_:InvokeServer("SetTeam", Team)
+    wait(1)
+end
 
--- Tự động join team
-spawn(function()
-    local team = _G.JoinTeam
-    local plyr = game.Players.LocalPlayer
-    if team == "Marines" or team == "Pirates" then
-        for _, v in pairs(game:GetService("Teams"):GetChildren()) do
-            if v.Name == team then
-                plyr.Team = v
-                break
-            end
-        end
-    end
-end)
-
--- UI Menu
-local Library = loadstring(game:HttpGet("https://pastebin.com/raw/6mjaPjMp"))() -- Load UI Library
-local Window = Library:CreateWindow("Shinichi Hub")
-
-local MainTab = Window:CreateTab("Main")
-local InfoTab = Window:CreateTab("Info")
-
-local ChestCollect = 0
-local PlayerMoney = game.Players.LocalPlayer.leaderstats.Beli.Value
-
-MainTab:CreateToggle("ESP Chest", _G.ESPChest, function(value)
-    _G.ESPChest = value
-end)
-
-MainTab:CreateToggle("Stop on God Chalice/Fist", _G.StopGodChalice, function(value)
-    _G.StopGodChalice = value
-end)
-
-MainTab:CreateLabel("Your Money: $" .. PlayerMoney)
-MainTab:CreateLabel("Chest Collect: " .. ChestCollect)
-
-InfoTab:CreateLabel("Use Discord for Support")
-InfoTab:CreateLabel("Discord Link: discord.gg/sAqcaJ4TsQ")
-
--- ESP Chest Function
-spawn(function()
-    while wait(1) do
-        if _G.ESPChest then
-            for _, v in pairs(workspace:GetChildren()) do
-                if v:IsA("Model") and string.find(v.Name, "Chest") then
-                    if not v:FindFirstChild("ESP") then
-                        local esp = Instance.new("BillboardGui", v)
-                        esp.Name = "ESP"
-                        esp.Size = UDim2.new(1, 200, 1, 30)
-                        esp.Adornee = v
-                        esp.AlwaysOnTop = true
-                        local text = Instance.new("TextLabel", esp)
-                        text.Size = UDim2.new(1, 0, 1, 0)
-                        text.BackgroundTransparency = 1
-                        text.Font = Enum.Font.GothamSemibold
-                        text.TextSize = 14
-                        text.TextColor3 = Color3.fromRGB(255, 255, 255)
-                        spawn(function()
-                            while _G.ESPChest and v:FindFirstChild("ESP") do
-                                text.Text = v.Name .. " | " .. math.floor((game.Players.LocalPlayer.Character.HumanoidRootPart.Position - v.Position).Magnitude) .. "m"
-                                wait(0.5)
-                            end
-                        end)
+-- 🌟 ESP Chest
+if _G.EspChest then
+    spawn(function()
+        while wait(1) do
+            for _, chest in pairs(Workspace:GetChildren()) do
+                if chest:IsA("Model") and string.find(chest.Name, "Chest") then
+                    if not chest:FindFirstChild("NameEsp") then
+                        local Esp = Instance.new("BillboardGui", chest)
+                        Esp.Name = "NameEsp"
+                        Esp.Size = UDim2.new(1, 200, 1, 30)
+                        Esp.Adornee = chest
+                        Esp.AlwaysOnTop = true
+                        local Label = Instance.new("TextLabel", Esp)
+                        Label.Text = chest.Name
+                        Label.TextColor3 = Color3.new(1, 1, 1)
+                        Label.BackgroundTransparency = 1
+                        Label.Size = UDim2.new(1, 0, 1, 0)
                     end
                 end
             end
-        else
-            for _, v in pairs(workspace:GetChildren()) do
-                if v:FindFirstChild("ESP") then
-                    v:FindFirstChild("ESP"):Destroy()
+        end
+    end)
+end
+
+-- 🌟 Auto Collect Chest
+if _G.AutoCollectChest then
+    spawn(function()
+        while wait() do
+            local Chests = {}
+            for _, v in pairs(Workspace:GetChildren()) do
+                if v:IsA("Model") and string.find(v.Name, "Chest") then
+                    table.insert(Chests, v)
                 end
             end
-        end
-    end
-end)
 
--- Auto Collect Chest
-spawn(function()
-    while wait(1) do
-        for _, v in pairs(workspace:GetChildren()) do
-            if v:IsA("Model") and string.find(v.Name, "Chest") then
-                local distance = (game.Players.LocalPlayer.Character.HumanoidRootPart.Position - v.Position).Magnitude
-                if distance < 50 then
-                    game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = v:GetModelCFrame()
-                    wait(0.5)
-                    ChestCollect = ChestCollect + 1
-                    MainTab:UpdateLabel("Chest Collect: " .. ChestCollect)
+            if #Chests > 0 then
+                local ClosestChest = nil
+                local ClosestDist = math.huge
+                for _, chest in pairs(Chests) do
+                    local Dist = (LocalPlayer.Character.HumanoidRootPart.Position - chest.Position).Magnitude
+                    if Dist < ClosestDist then
+                        ClosestDist = Dist
+                        ClosestChest = chest
+                    end
                 end
-            end
-        end
-    end
-end)
 
--- Stop if God Chalice or Fist of Darkness is Found
-spawn(function()
-    while wait(1) do
-        if _G.StopGodChalice then
-            for _, v in pairs(workspace:GetChildren()) do
-                if v:IsA("Tool") and (v.Name == "God Chalice" or v.Name == "Fist of Darkness") then
-                    game.StarterGui:SetCore("SendNotification", {
-                        Title = "Shinichi Hub";
-                        Text = "God Chalice/Fist of Darkness Found! Stopping...";
-                        Duration = 5;
-                    })
-                    return
+                if ClosestChest then
+                    LocalPlayer.Character.HumanoidRootPart.CFrame = ClosestChest:GetPivot()
+                    wait(1)
                 end
+            else
+                if _G.StopGodChalice or _G.StopFistOfDarkness then
+                    for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
+                        if (_G.StopGodChalice and item.Name == "God's Chalice") or 
+                           (_G.StopFistOfDarkness and item.Name == "Fist of Darkness") then
+                            return
+                        end
+                    end
+                end
+                -- 🌟 Không còn chest -> Hop Server
+                game:GetService("TeleportService"):Teleport(game.PlaceId, LocalPlayer)
             end
         end
-    end
+    end)
+end
+
+-- 🌟 UI Menu (Không cần Library)
+local ScreenGui = Instance.new("ScreenGui")
+local MainFrame = Instance.new("Frame")
+local Title = Instance.new("TextLabel")
+local ChestCount = Instance.new("TextLabel")
+local Status = Instance.new("TextLabel")
+local NextChestDist = Instance.new("TextLabel")
+local ToggleUI = Instance.new("TextButton")
+local CloseUI = Instance.new("TextButton")
+
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+MainFrame.Size = UDim2.new(0, 300, 0, 200)
+MainFrame.Position = UDim2.new(0.5, -150, 0.5, -100)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.Parent = ScreenGui
+
+Title.Text = "Shinichi Hub"
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
+Title.TextColor3 = Color3.new(1, 1, 1)
+Title.Parent = MainFrame
+
+ChestCount.Text = "Chest Collect: 0"
+ChestCount.Position = UDim2.new(0, 10, 0, 40)
+ChestCount.Size = UDim2.new(1, -20, 0, 20)
+ChestCount.TextColor3 = Color3.new(1, 1, 1)
+ChestCount.BackgroundTransparency = 1
+ChestCount.Parent = MainFrame
+
+Status.Text = "Status: Farming"
+Status.Position = UDim2.new(0, 10, 0, 70)
+Status.Size = UDim2.new(1, -20, 0, 20)
+Status.TextColor3 = Color3.new(1, 1, 1)
+Status.BackgroundTransparency = 1
+Status.Parent = MainFrame
+
+NextChestDist.Text = "Next Chest Distance: 0"
+NextChestDist.Position = UDim2.new(0, 10, 0, 100)
+NextChestDist.Size = UDim2.new(1, -20, 0, 20)
+NextChestDist.TextColor3 = Color3.new(1, 1, 1)
+NextChestDist.BackgroundTransparency = 1
+NextChestDist.Parent = MainFrame
+
+ToggleUI.Text = "-"
+ToggleUI.Position = UDim2.new(1, -30, 0, 5)
+ToggleUI.Size = UDim2.new(0, 20, 0, 20)
+ToggleUI.TextColor3 = Color3.new(1, 1, 1)
+ToggleUI.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+ToggleUI.Parent = MainFrame
+
+CloseUI.Text = "X"
+CloseUI.Position = UDim2.new(1, -60, 0, 5)
+CloseUI.Size = UDim2.new(0, 20, 0, 20)
+CloseUI.TextColor3 = Color3.new(1, 1, 1)
+CloseUI.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+CloseUI.Parent = MainFrame
+
+ToggleUI.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
 end)
 
--- Hop Server when No More Chests
-spawn(function()
-    while wait(10) do
-        local chestFound = false
-        for _, v in pairs(workspace:GetChildren()) do
-            if v:IsA("Model") and string.find(v.Name, "Chest") then
-                chestFound = true
-                break
-            end
-        end
-        if not chestFound then
-            game.StarterGui:SetCore("SendNotification", {
-                Title = "Shinichi Hub";
-                Text = "Hopping Server in 3s...";
-                Duration = 3;
-            })
-            wait(3)
-            local TeleportService = game:GetService("TeleportService")
-            TeleportService:Teleport(game.PlaceId, game.Players.LocalPlayer)
-        end
-    end
+CloseUI.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
 end)
