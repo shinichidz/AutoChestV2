@@ -3,6 +3,15 @@ local LocalPlayer = Players.LocalPlayer
 local Workspace = game:GetService("Workspace")
 local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TeleportService = game:GetService("TeleportService")
+
+-- 🌟 Config
+_G.AutoCollectChest = _G.AutoCollectChest or true  
+_G.EspChest = _G.EspChest or true
+_G.StopGodChalice = _G.StopGodChalice or true
+_G.StopFistOfDarkness = _G.StopFistOfDarkness or true
+_G.SelectTeam = _G.SelectTeam or "Pirate" -- "Marines" or "Pirate"
+_G.AutoHopServer = _G.AutoHopServer or true -- Chỉ hop nếu không còn chest
 
 -- 🌟 Auto chọn Team
 if _G.SelectTeam then
@@ -50,7 +59,7 @@ if _G.AutoCollectChest then
                 local ClosestChest = nil
                 local ClosestDist = math.huge
                 for _, chest in pairs(Chests) do
-                    local Dist = (LocalPlayer.Character.HumanoidRootPart.Position - chest.Position).Magnitude
+                    local Dist = (LocalPlayer.Character.HumanoidRootPart.Position - chest:GetPivot().Position).Magnitude
                     if Dist < ClosestDist then
                         ClosestDist = Dist
                         ClosestChest = chest
@@ -62,22 +71,24 @@ if _G.AutoCollectChest then
                     wait(1)
                 end
             else
-                if _G.StopGodChalice or _G.StopFistOfDarkness then
-                    for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
-                        if (_G.StopGodChalice and item.Name == "God's Chalice") or 
-                           (_G.StopFistOfDarkness and item.Name == "Fist of Darkness") then
-                            return
-                        end
+                -- 🌟 Kiểm tra có Fist of Darkness hoặc God Chalice không
+                for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
+                    if (_G.StopGodChalice and item.Name == "God's Chalice") or 
+                       (_G.StopFistOfDarkness and item.Name == "Fist of Darkness") then
+                        return
                     end
                 end
-                -- 🌟 Không còn chest -> Hop Server
-                game:GetService("TeleportService"):Teleport(game.PlaceId, LocalPlayer)
+
+                -- 🌟 Nếu không còn chest và AutoHop bật -> Hop Server
+                if _G.AutoHopServer then
+                    TeleportService:Teleport(game.PlaceId, LocalPlayer)
+                end
             end
         end
     end)
 end
 
--- 🌟 UI Menu (Không cần Library)
+-- 🌟 UI Menu
 local ScreenGui = Instance.new("ScreenGui")
 local MainFrame = Instance.new("Frame")
 local Title = Instance.new("TextLabel")
