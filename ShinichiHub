@@ -1,31 +1,32 @@
+-- 🌟 Load Config từ Loadstring
+local Config = getgenv() and getgenv().ShinichiConfig or {
+    CollectChest = true,
+    EspChest = true,
+    TeamJoin = "Pirates",
+    StopWhenGotRareItem = true,
+    ScanRadius = 1000,
+    TweenSpeed = 50,
+    ServerHopWhenEmpty = true
+}
+
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TeleportService = game:GetService("TeleportService")
+local TweenService = game:GetService("TweenService")
 
--- 🌟 Config mặc định
-_G.AutoCollectChest = _G.AutoCollectChest or true
-_G.EspChest = _G.EspChest or true
-_G.HopServerAfterChest = _G.HopServerAfterChest or 10 -- Số chest cần nhặt trước khi hop
-_G.StopGodChalice = _G.StopGodChalice or true
-_G.StopFistOfDarkness = _G.StopFistOfDarkness or true
-_G.SelectTeam = _G.SelectTeam or "Pirate" -- "Marines" hoặc "Pirate"
-
--- 🌟 Biến đếm số chest đã nhặt
-local ChestCollected = 0
-
--- 🌟 Auto chọn Team
-if _G.SelectTeam then
+-- 🌟 Auto Chọn Team
+if Config.TeamJoin then
     spawn(function()
-        local Team = _G.SelectTeam == "Pirate" and "Pirates" or "Marines"
+        local Team = Config.TeamJoin == "Pirates" and "Pirates" or "Marines"
         ReplicatedStorage.Remotes.CommF_:InvokeServer("SetTeam", Team)
-        wait(3) -- Chờ game load để tránh hop server ngay lập tức
+        wait(3) -- Chờ game load tránh lỗi
     end)
 end
 
 -- 🌟 ESP Chest
-if _G.EspChest then
+if Config.EspChest then
     spawn(function()
         while wait(1) do
             for _, chest in pairs(Workspace:GetChildren()) do
@@ -48,10 +49,9 @@ if _G.EspChest then
     end)
 end
 
--- 🌟 Auto Collect Chest với giới hạn hop server
-if _G.AutoCollectChest then
+-- 🌟 Auto Collect Chest
+if Config.CollectChest then
     spawn(function()
-        wait(3) -- Chờ game load chest tránh lỗi hop sớm
         while wait() do
             local Chests = {}
             for _, v in pairs(Workspace:GetChildren()) do
@@ -74,98 +74,23 @@ if _G.AutoCollectChest then
                 if ClosestChest then
                     LocalPlayer.Character.HumanoidRootPart.CFrame = ClosestChest:GetPivot()
                     wait(1)
-                    ChestCollected = ChestCollected + 1
                 end
             else
                 -- Kiểm tra item quan trọng trước khi đổi server
                 local hasImportantItem = false
                 for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
-                    if (_G.StopGodChalice and item.Name == "God's Chalice") or 
-                       (_G.StopFistOfDarkness and item.Name == "Fist of Darkness") then
+                    if (Config.StopWhenGotRareItem and (item.Name == "God's Chalice" or item.Name == "Fist of Darkness")) then
                         hasImportantItem = true
                         break
                     end
                 end
 
-                -- Chỉ hop server nếu đã nhặt đủ số chest yêu cầu và không có item quan trọng
-                if ChestCollected >= _G.HopServerAfterChest and not hasImportantItem then
-                    wait(5) -- Chờ thêm tránh spam hop quá nhanh
+                -- Chỉ hop server nếu hết rương và không có item quan trọng
+                if Config.ServerHopWhenEmpty and not hasImportantItem then
+                    wait(5)
                     TeleportService:Teleport(game.PlaceId, LocalPlayer)
                 end
             end
         end
     end)
 end
-
--- 🌟 UI Menu
-local ScreenGui = Instance.new("ScreenGui")
-local MainFrame = Instance.new("Frame")
-local Title = Instance.new("TextLabel")
-local ChestCount = Instance.new("TextLabel")
-local Status = Instance.new("TextLabel")
-local NextChestDist = Instance.new("TextLabel")
-local ToggleUI = Instance.new("TextButton")
-local CloseUI = Instance.new("TextButton")
-
-ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-
-MainFrame.Size = UDim2.new(0, 300, 0, 200)
-MainFrame.Position = UDim2.new(0.5, -150, 0.5, -100)
-MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-MainFrame.Parent = ScreenGui
-
-Title.Text = "Shinichi Hub"
-Title.Size = UDim2.new(1, 0, 0, 30)
-Title.BackgroundColor3 = Color3.fromRGB(0, 120, 255)
-Title.TextColor3 = Color3.new(1, 1, 1)
-Title.Parent = MainFrame
-
-ChestCount.Text = "Chest Collect: 0"
-ChestCount.Position = UDim2.new(0, 10, 0, 40)
-ChestCount.Size = UDim2.new(1, -20, 0, 20)
-ChestCount.TextColor3 = Color3.new(1, 1, 1)
-ChestCount.BackgroundTransparency = 1
-ChestCount.Parent = MainFrame
-
-Status.Text = "Status: Farming"
-Status.Position = UDim2.new(0, 10, 0, 70)
-Status.Size = UDim2.new(1, -20, 0, 20)
-Status.TextColor3 = Color3.new(1, 1, 1)
-Status.BackgroundTransparency = 1
-Status.Parent = MainFrame
-
-NextChestDist.Text = "Next Chest Distance: 0"
-NextChestDist.Position = UDim2.new(0, 10, 0, 100)
-NextChestDist.Size = UDim2.new(1, -20, 0, 20)
-NextChestDist.TextColor3 = Color3.new(1, 1, 1)
-NextChestDist.BackgroundTransparency = 1
-NextChestDist.Parent = MainFrame
-
-ToggleUI.Text = "-"
-ToggleUI.Position = UDim2.new(1, -30, 0, 5)
-ToggleUI.Size = UDim2.new(0, 20, 0, 20)
-ToggleUI.TextColor3 = Color3.new(1, 1, 1)
-ToggleUI.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-ToggleUI.Parent = MainFrame
-
-CloseUI.Text = "X"
-CloseUI.Position = UDim2.new(1, -60, 0, 5)
-CloseUI.Size = UDim2.new(0, 20, 0, 20)
-CloseUI.TextColor3 = Color3.new(1, 1, 1)
-CloseUI.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-CloseUI.Parent = MainFrame
-
-ToggleUI.MouseButton1Click:Connect(function()
-    MainFrame.Visible = not MainFrame.Visible
-end)
-
-CloseUI.MouseButton1Click:Connect(function()
-    ScreenGui:Destroy()
-end)
-
--- 🌟 Cập nhật số chest đã nhặt
-spawn(function()
-    while wait(1) do
-        ChestCount.Text = "Chest Collected: " .. ChestCollected
-    end
-end)
