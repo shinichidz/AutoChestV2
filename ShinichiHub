@@ -1,23 +1,23 @@
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Workspace = game:GetService("Workspace")
-local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TeleportService = game:GetService("TeleportService")
 
--- 🌟 Config
-_G.AutoCollectChest = _G.AutoCollectChest or true  
+-- 🌟 Config mặc định
+_G.AutoCollectChest = _G.AutoCollectChest or true
 _G.EspChest = _G.EspChest or true
 _G.StopGodChalice = _G.StopGodChalice or true
 _G.StopFistOfDarkness = _G.StopFistOfDarkness or true
-_G.SelectTeam = _G.SelectTeam or "Pirate" -- "Marines" or "Pirate"
-_G.AutoHopServer = _G.AutoHopServer or true -- Chỉ hop nếu không còn chest
+_G.SelectTeam = _G.SelectTeam or "Pirate" -- "Marines" hoặc "Pirate"
 
 -- 🌟 Auto chọn Team
 if _G.SelectTeam then
-    local Team = _G.SelectTeam == "Pirate" and "Pirates" or "Marines"
-    ReplicatedStorage.Remotes.CommF_:InvokeServer("SetTeam", Team)
-    wait(1)
+    spawn(function()
+        local Team = _G.SelectTeam == "Pirate" and "Pirates" or "Marines"
+        ReplicatedStorage.Remotes.CommF_:InvokeServer("SetTeam", Team)
+        wait(3) -- Chờ game load để tránh hop server ngay lập tức
+    end)
 end
 
 -- 🌟 ESP Chest
@@ -44,9 +44,10 @@ if _G.EspChest then
     end)
 end
 
--- 🌟 Auto Collect Chest
+-- 🌟 Auto Collect Chest (FIX hop server ngay lập tức)
 if _G.AutoCollectChest then
     spawn(function()
+        wait(3) -- Chờ game load chest tránh lỗi hop sớm
         while wait() do
             local Chests = {}
             for _, v in pairs(Workspace:GetChildren()) do
@@ -71,16 +72,19 @@ if _G.AutoCollectChest then
                     wait(1)
                 end
             else
-                -- 🌟 Kiểm tra có Fist of Darkness hoặc God Chalice không
+                -- Kiểm tra item quan trọng trước khi đổi server
+                local hasImportantItem = false
                 for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
                     if (_G.StopGodChalice and item.Name == "God's Chalice") or 
                        (_G.StopFistOfDarkness and item.Name == "Fist of Darkness") then
-                        return
+                        hasImportantItem = true
+                        break
                     end
                 end
 
-                -- 🌟 Nếu không còn chest và AutoHop bật -> Hop Server
-                if _G.AutoHopServer then
+                -- Chỉ đổi server nếu không còn chest và không có item quan trọng
+                if not hasImportantItem then
+                    wait(5) -- Chờ thêm tránh spam hop quá nhanh
                     TeleportService:Teleport(game.PlaceId, LocalPlayer)
                 end
             end
@@ -88,7 +92,7 @@ if _G.AutoCollectChest then
     end)
 end
 
--- 🌟 UI Menu
+-- 🌟 UI Menu (Không cần Library)
 local ScreenGui = Instance.new("ScreenGui")
 local MainFrame = Instance.new("Frame")
 local Title = Instance.new("TextLabel")
