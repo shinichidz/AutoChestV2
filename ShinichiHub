@@ -70,27 +70,31 @@ ChestCountLabel.TextSize = 22
 
 -- 🎯 Auto Chest 
 spawn(function()
-    while wait() do
-        if getgenv().autoChest then
-            local v1921 = game:GetService("Players")
-            local v1922 = v1921.LocalPlayer
-            local v1923 = v1922.Character or v1922.CharacterAdded:Wait()
-            local v1924 = v1923:GetPivot().Position
-            local v1925 = game:GetService("CollectionService")
-            local v1926 = v1925:GetTagged("_ChestTagged")
-            local v1927, v1928 = math.huge
-            for v2035 = 1, #v1926 do
-                local v2036 = v1926[v2035]
-                local v2037 = (v2036:GetPivot().Position - v1924).Magnitude
-                if (not v2036:GetAttribute("IsDisabled") and (v2037 < v1927)) then
-                    v1927, v1928 = v2037, v2036
-                end
+    local chestCount = 0  -- Biến lưu trữ số lượng rương đã nhặt
+    while getgenv().autoChest do
+        wait(1)
+        local v1921 = game:GetService("Players")
+        local v1922 = v1921.LocalPlayer
+        local v1923 = v1922.Character or v1922.CharacterAdded:Wait()
+        local v1924 = v1923:GetPivot().Position
+        local v1925 = game:GetService("CollectionService")
+        local v1926 = v1925:GetTagged("_ChestTagged")
+        local v1927, v1928 = math.huge
+        for v2035 = 1, #v1926 do
+            local v2036 = v1926[v2035]
+            local v2037 = (v2036:GetPivot().Position - v1924).Magnitude
+            if (not v2036:GetAttribute("IsDisabled") and (v2037 < v1927)) then
+                v1927, v1928 = v2037, v2036
             end
-            if v1928 then
-                local v2103 = v1928:GetPivot().Position
-                local v2104 = CFrame.new(v2103)
-                topos(v2104)
-            end
+        end
+        if v1928 then
+            local v2103 = v1928:GetPivot().Position
+            local v2104 = CFrame.new(v2103)
+            -- Tween đến vị trí rương
+            game:GetService("TweenService"):Create(v1923, TweenInfo.new(1), {CFrame = v2104}):Play()
+            wait(2)  -- Đợi một chút để đảm bảo việc nhặt rương
+            chestCount = chestCount + 1
+            ChestCountLabel.Text = "Chests Collected: " .. chestCount
         end
     end
 end)
@@ -100,7 +104,6 @@ spawn(function()
     while getgenv().autoChest do
         wait(5)
         local chests = #game:GetService("CollectionService"):GetTagged("_ChestTagged")
-
         if chestCount >= 50 or chests == 0 then
             StatusLabel.Text = "Status: Hopping Server..."
             wait(2)
@@ -129,5 +132,3 @@ local function SetGraphicsQuality(level)
 end
 
 SetGraphicsQuality(getgenv().fpsBoost)  -- Thay đổi mức đồ họa theo cấu hình fpsBoost
-
-loadstring(game:HttpGet("https://raw.githubusercontent.com/shinichidz/EzChestV2/refs/heads/main/ChestAutoFarm"))()
